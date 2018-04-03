@@ -1,4 +1,4 @@
-# Copyright 2016 Google Inc.
+# Copyright 2015 Google Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,12 +23,21 @@ app = Flask(__name__)
 
 @app.route('/')
 def hello():
+    """Return a friendly HTTP greeting."""
     return 'Hello World!'
 
 
 @app.errorhandler(500)
 def server_error(e):
-    # Log the error and stacktrace.
     logging.exception('An error occurred during a request.')
-    return 'An internal error occurred.', 500
+    return """
+    An internal error occurred: <pre>{}</pre>
+    See logs for full stacktrace.
+    """.format(e), 500
+
+
+if __name__ == '__main__':
+    # This is used when running locally. Gunicorn is used to run the
+    # application on Google App Engine. See entrypoint in app.yaml.
+    app.run(host='127.0.0.1', port=8080, debug=True)
 # [END app]
