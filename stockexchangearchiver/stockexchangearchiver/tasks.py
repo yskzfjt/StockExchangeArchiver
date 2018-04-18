@@ -19,7 +19,7 @@ from flask import current_app
 from google.cloud import pubsub, datastore
 import psq
 import requests
-from . import Nikkei225
+from . import Nikkei225, StockFetcher
 
 
 # [START get_books_queue]
@@ -63,8 +63,7 @@ def process_daily_fetch():
     for i in range( len(nk.stocks) ):
         s = nk.stocks[ i ]
         s.fetch_prices( nk.timestamps )
-
-    logging.info('FETCH ' + str(i))
+        logging.info('FETCH ' + str(i))
         
     #データ作成
     dct = {
@@ -72,6 +71,7 @@ def process_daily_fetch():
         'stocks':[ s.label+" -- "+str(s.code) for s in nk.stocks ],
         'timestamps': nk.timestamps
     }
+    
     for s in nk.stocks:
         dct[ s.code ] = s.prices
 
