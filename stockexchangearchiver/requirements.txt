@@ -1,0 +1,16 @@
+Flask==0.12.2
+google-cloud-logging==1.4.0
+google-cloud-error_reporting==0.29.0
+gunicorn==19.7.1
+six==1.11.0
+requests[security]==2.18.4
+honcho==1.0.1
+psq==0.6.0
+
+google-cloud-datastore==1.5.0
+google
+requests
+bs4
+numpy
+pandas
+

@@ -1,0 +1,5 @@
+cron:
+- description: "archive/daily_fetch"
+  url: /timer
+  schedule: every mon tue wed thu fri 15:10
+  timezone: Asia/Tokyo

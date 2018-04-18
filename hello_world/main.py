@@ -15,10 +15,9 @@
 # [START app]
 import logging
 
-from flask import Flask
-
 import requests
 from datetime import datetime, timedelta
+from flask import Flask, jsonify, render_template, request
 
 url = "https://www.google.com/finance/getprices"
 code = 7203
@@ -37,14 +36,27 @@ params = {
 
 app = Flask(__name__)
 
-
+'''
 @app.route('/')
 def hello():
     """Return a friendly HTTP greeting."""
     r = requests.get(url, params=params)
+    print( "HERE" )
     return r.text.replace('\n', '<br>')
     #return 'Hello World!'
+'''
 
+@app.route('/fetch')
+def fetch():
+    #print( "HERE" )
+    return jsonify( time_string = str(datetime.now()) )
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+    #return 'Hello World!'
+    
 @app.errorhandler(500)
 def server_error(e):
     logging.exception('An error occurred during a request.')

@@ -1,0 +1,3 @@
+stockexchangearchiver: gunicorn -b 0.0.0.0:$PORT main:app
+worker: psqworker --pid /tmp/psq.pid main.daily_fetch_queue
+monitor: python monitor.py /tmp/psq.pid

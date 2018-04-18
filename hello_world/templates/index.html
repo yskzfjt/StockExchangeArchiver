@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang = "ja">
+  <head>
+    <meta charset = "utf-8">
+    <title>JavaScriptの練習</title>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+  </head>
+  <body>
+	<div id="test"> &&&&& </div>
+    <script>
+	  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+
+	  function update(){
+      $.ajax({
+      url: $SCRIPT_ROOT+"/fetch",
+      type: 'GET',
+      dataType: 'json',
+      })
+      .done(function( res ) {
+	  console.log( res );
+	  document.getElementById("test").innerHTML=res[ "time_string" ];
+      });
+	  }
+
+
+	  update();
+	  check = setInterval("update()",1000);
+
+    </script>
+  </body>
+</html>
+
