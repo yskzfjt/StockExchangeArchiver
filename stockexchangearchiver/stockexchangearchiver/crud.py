@@ -116,8 +116,6 @@ def daily_fetch_sync():
         s = nk.stocks[ i ]
         s.fetch_prices( nk.timestamps )
 
-        logging.info('FETCH ' + str(i))
-        
     #データ作成
     dct = {
         'timestamp': nk.get_timestamp(),
@@ -140,7 +138,7 @@ def daily_fetch_sync():
 @crud.route('/daily_fetch', methods=['GET'])
 def daily_fetch():
 
-
+    #ここでパブリッシュ
     q = tasks.get_daily_fetch_queue()
     q.enqueue(tasks.process_daily_fetch)
     

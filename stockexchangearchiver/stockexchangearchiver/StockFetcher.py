@@ -2,6 +2,7 @@ import requests
 from datetime import datetime, timedelta
 #import matplotlib.pyplot as plt
 import numpy as np
+import logging
 
 class StockFetcher:
     url = "https://www.google.com/finance/getprices"
@@ -10,6 +11,10 @@ class StockFetcher:
     period = "1d"
     column = "d,c"
     market_duration_minute = 360 #休憩を含む
+    
+    time_zone_offset = 60 * 540 #sec     本番環境だとtime_zone_offsetを入れないとずれてる。
+    #time_zone_offset = 60 * 0 #sec    ローカルだとtime_zone_offsetを入れるとずれる。
+
     def __init__(self, code, label, name):
         self.code = code
         self.label = label
@@ -38,34 +43,38 @@ class StockFetcher:
 
         #レスポンスの１日目のタイムスタンプをdatetimeに
         base_time = 0
-        dict = {}
+        dct = {}
         for i in range( len(prices) ):
             cols = prices[ i ].split(",")
             if 'a' in cols[0]:
+                #二日目以降は読まない仕様
                 if base_time != 0: break
                 base_time = int( cols[0].lstrip('a') )
-                d = datetime.fromtimestamp( base_time )
+                ofst = 0
             else:
+                #二日目以降は読まない仕様
+                if not self.within_a_day( ofst ): break
                 ofst = int( cols[0] )
-                if not self.within_a_day( ofst ):
-                    break
-                d = datetime.fromtimestamp( base_time + ofst * StockFetcher.interval )
+
+            d = datetime.fromtimestamp( base_time + ofst * StockFetcher.interval + StockFetcher.time_zone_offset )
+            #logging.info('TIMESTAMP ' + str( d ))
     
             if  self.just_begining_time(d) or self.just_end_time(d):
                 #開始時間ピッタリのやつはおかしい。
                 #終了時間ピッタリのやつはないのもあるので除外。
                 pass
             else:
-                dict[ d ] = float(cols[1])
+                dct[ d ] = float(cols[1])
 
         self.prices = []
         self.timestamps = []
         for t in timestamps:
             self.timestamps.append( t )
-            if t in dict:
-                self.prices.append( dict[ t ] )
+            if t in dct:
+                self.prices.append( dct[ t ] )
             else:
-                self.prices.append( -1 )
+                #logging.info('NO TIMESTAMP FOUND ' + str( t ))
+                self.prices.append( float(-1) )
                 
         return self.prices, self.timestamps
     

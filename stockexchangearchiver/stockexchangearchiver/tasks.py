@@ -14,7 +14,6 @@
 
 import logging
 
-#from bookshelf import get_model, storage
 from flask import current_app
 from google.cloud import pubsub, datastore
 import psq
@@ -39,7 +38,7 @@ def get_daily_fetch_queue():
         'daily_fetch_queue', extra_context=current_app.app_context)
 # [END get_books_queue]
 
-
+#workerスレッドから呼ばれる
 def process_daily_fetch():
     nk = Nikkei225.Nikkei225()
     nk.fetch()
@@ -63,7 +62,7 @@ def process_daily_fetch():
     for i in range( len(nk.stocks) ):
         s = nk.stocks[ i ]
         s.fetch_prices( nk.timestamps )
-        logging.info('FETCH ' + str(i))
+        #logging.info('FETCH ' + str(i))
         
     #データ作成
     dct = {
