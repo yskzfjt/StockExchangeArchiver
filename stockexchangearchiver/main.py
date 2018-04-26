@@ -15,18 +15,14 @@
 import stockexchangearchiver
 import config
 
-
 app = stockexchangearchiver.create_app(config)
 
-# [START books_queue]
-# Make the queue available at the top-level, this allows you to run
-# `psqworker main.books_queue`. We have to use the app's context because
-# it contains all the configuration for plugins.
-# If you were using another task queue, such as celery or rq, you can use this
-# section to configure your queues to work with Flask.
+#GAEはURLレスポンスタイムに一分の時間制限がある。
+#daily_fetchがその制限に引っかかってしまうのでPUB/SUBを使う。
+#PUB/SUBのキューは外部のpsqworkerというプログラムから見える必要があるので、
+#app_context()はget_daily_fetch_queue内部でカレントアプリの値を参照できるようにする。
 with app.app_context():
     daily_fetch_queue = stockexchangearchiver.tasks.get_daily_fetch_queue()
-# [END books_queue]
 
 # This is only used when running locally. When running live, gunicorn runs
 # the application.

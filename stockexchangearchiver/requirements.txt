@@ -13,4 +13,5 @@ requests
 bs4
 numpy
 pandas
+pytz
 

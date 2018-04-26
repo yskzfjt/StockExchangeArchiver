@@ -21,22 +21,17 @@ import requests
 from . import Nikkei225, StockFetcher
 
 
-# [START get_books_queue]
+# [START queue]
 publisher_client = pubsub.PublisherClient()
 subscriber_client = pubsub.SubscriberClient()
 
 
 def get_daily_fetch_queue():
+    #current_appを使うのでwith app.app_context():内で呼ばれる必要がある。
     project = current_app.config['PROJECT_ID']
-
-    # Create a queue specifically for processing books and pass in the
-    # Flask application context. This ensures that tasks will have access
-    # to any extensions / configuration specified to the app, such as
-    # models.
     return psq.Queue(
         publisher_client, subscriber_client, project,
         'daily_fetch_queue', extra_context=current_app.app_context)
-# [END get_books_queue]
 
 #workerスレッドから呼ばれる
 def process_daily_fetch():

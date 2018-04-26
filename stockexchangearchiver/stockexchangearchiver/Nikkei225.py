@@ -23,22 +23,25 @@ class Nikkei225:
         self.stocks = []
         self.timestamps = []
 
+
+    #最終更新日時からdatetimeを取得
     def get_timestamp( self ):
         return datetime.strptime(self.date, '%Y.%m.%d')
-        
+
+    #最終更新日時を取得
     def fetch_date( self, soup ):
         divs = soup.find_all("div", class_="last-update" )
         assert len(divs)==1, "no last-update class found."
         self.date = divs[0].string
-        print( self.date )
         self.date = self.date.split('：')[1]
         self.make_timestamps()
 
+    #開始時間のdatetimeを取得
     def get_start_timestamp( self, time ):
         ts = self.get_timestamp()
         return datetime( ts.year, ts.month, ts.day ) + timedelta(hours=time)
 
-
+    #取得するデータのタイムスタンプを作成。
     def make_timestamps( self ):
         tick = timedelta( seconds=Nikkei225.interval )
         starts = [ Nikkei225.am_start, Nikkei225.pm_start ]
@@ -50,6 +53,7 @@ class Nikkei225:
                 bgn += tick
                 self.timestamps.append(  bgn )
 
+    #取得するデータの銘柄を取得
     def fetch_stock( self, soup ):
         divs = soup.find_all("div", class_=re.compile("row component-list.*") )
         
@@ -65,7 +69,7 @@ class Nikkei225:
                 # パス→何も処理を行わない
                 pass
         
-        
+    #日経のURLからHTMLを取得して、日付、タイムスタンプ、銘柄をスクレイピング
     def fetch( self ):
         html = urllib.request.urlopen(self.url)
         soup = BeautifulSoup(html, "html.parser")

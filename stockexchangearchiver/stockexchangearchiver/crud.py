@@ -18,19 +18,16 @@ from datetime import datetime
 from google.cloud import datastore
 import pandas as pd
 import logging
-from . import StockFetcher
-from . import Nikkei225
+from . import StockFetcher, Nikkei225
 
 '''
-Blueprint
-アプリが大きくなったときに、
+Blueprintはアプリが大きくなったときに、
 リクエスト単位でスクリプトファイルを分割したいときに使う。
-
 crud = Blueprint('crud', __name__)
 
 デコレータが@appになってないことに注目
 @crud.route("/")
-def list():
+def root():
 
 
 同じ階層にある別ファイルからはこんなふうにしてアプリに接続
@@ -39,40 +36,66 @@ from . import crud
 '''
 crud = Blueprint('crud', __name__)
 
-@crud.route('/add', methods=['GET', 'POST'])
-def add():
-    return "dummy", 200
-
+#########################################################
+##welcome page
+#########################################################
 @crud.route("/")
 def root():
     return "Go  http://stockexchangearchiver.appspot.com/archive/display/ YYYY.MM.DD to view archives ", 200
-# [END list]
 
+#########################################################
+## google financeからデータ取得。cronで呼ばれるURL
+#########################################################
+@crud.route('/daily_fetch', methods=['GET'])
+def daily_fetch():
+
+    #ここでパブリッシュ
+    q = tasks.get_daily_fetch_queue()
+    q.enqueue(tasks.process_daily_fetch)
+    
+    return " Task was published " , 200
+
+
+#########################################################
+## 日付がdateのNikkei225を探して、そのpandasを用意する。
+#########################################################
 def get_pd( date ):
-    ds = datastore.Client()
 
+    #日付でNikkei225を検索
+    ds = datastore.Client()
     query = ds.query(kind='Nikkei225')
     query.add_filter('timestamp', '=',  datetime.strptime(date, '%Y.%m.%d'))
-    for q in list(query.fetch()):
-        stocks = q['stocks']
-        timestamps = q['timestamps']
-        for i, t in enumerate( timestamps ):
-            timestamps[i] = t.strftime('%H:%M:%S')
 
+    for nk225 in list(query.fetch()):
+        #株価のリスト 行インデックス
+        stocks = nk225['stocks']
+        
+        #タイムスタンプのリスト 列インデックス
+        timestamps = []
+
+        #タイムスタンプをインデックス用に文字列化
+        for i, t in enumerate( nk225['timestamps'] ):
+            timestamps.append( t.strftime('%H:%M:%S') )
+
+        #データフレーム作成
         pd_data = pd.DataFrame()
         for i in range( len(stocks) ):
-        #for i in range( 10 ):
+            #株価コード抽出
             code = stocks[ i ].split(" -- ")[1]
-            if code not in q:
+            if code not in nk225:
                 print( "{} does not exist.".format( stocks[ i ] ) )
             else:
-                pd_data[ stocks[ i ] ] = pd.Series( q[ code ], index=timestamps )
+                pd_data[ stocks[ i ] ] = pd.Series( nk225[ code ], index=timestamps )
 
+        #こっちのほうが見やすい
         pd_data.transpose()
         return pd_data
 
     return None
 
+#########################################################
+## URL最後のYYYY.MM.DDに対応するNikkei225をHTMLの表にする。
+#########################################################
 @crud.route('/display/<date>')
 def display(date):
     pd_data = get_pd( date )
@@ -81,6 +104,9 @@ def display(date):
     else:
         return "ERROR:" + date + " does not exist in database.", 200
         
+#########################################################
+## URL最後のYYYY.MM.DDに対応するNikkei225をCSVにする。
+#########################################################
 @crud.route('/csv/<date>')
 def csv(date):
     pd_data = get_pd( date )
@@ -91,12 +117,53 @@ def csv(date):
         
 
 
+#########################################################
+## 日付がdateのNikkei225を探してリストにして返す
+#########################################################
+def get_Nikkei225_list( date ):
+    ds = datastore.Client()
+    query = ds.query(kind='Nikkei225')
+    query.add_filter('timestamp', '=',  datetime.strptime(date, '%Y.%m.%d'))
+    return list(query.fetch())
+    
+#########################################################
+## デバッグ daily_fetchに失敗しているデータはローカルでこれを呼ぶ
+#########################################################
+@crud.route('/daily_fetch_old_sync/<date>', methods=['GET'])
+def daily_fetch_old_sync( date ):
+    for nk225 in get_Nikkei225_list( date ):
+
+        ds = datastore.Client()
+        key = ds.key('Nikkei225', int(nk225.id) )
+
+        #株価部分だけ上書き
+        for stock in nk225[ "stocks" ]:
+            code = int( stock.split( " -- " )[1] )
+            s = StockFetcher.StockFetcher( code, "",  ""  )
+            s.fetch_prices(  nk225['timestamps'] )
+            nk225[ str(code) ] = s.prices
+
+        #データ登録
+        entity = datastore.Entity(key=ds.key('Nikkei225'))
+        entity.update( nk225 )
+        ds.put(entity)
+
+        #古いのは消す
+        ds.delete(key)
+
+        #一つしか無いはず
+        break
+
+    return " OK " , 200
+
+#########################################################
+## デバッグ　ローカルから本日の株価取得
+#########################################################
 @crud.route('/daily_fetch_sync', methods=['GET'])
 def daily_fetch_sync():
 
     nk = Nikkei225.Nikkei225()
     nk.fetch()
-
     ds = datastore.Client()
 
     #古いのは消す
@@ -111,7 +178,6 @@ def daily_fetch_sync():
         logging.info('DELETE EXCEPTION')
 
     #fetch_all
-    #for i in range( 5 ):
     for i in range( len(nk.stocks) ):
         s = nk.stocks[ i ]
         s.fetch_prices( nk.timestamps )
@@ -135,17 +201,11 @@ def daily_fetch_sync():
     return " OK " , 200
 
 
-@crud.route('/daily_fetch', methods=['GET'])
-def daily_fetch():
-
-    #ここでパブリッシュ
-    q = tasks.get_daily_fetch_queue()
-    q.enqueue(tasks.process_daily_fetch)
-    
-    return " Task was published " , 200
-
-
 '''
+@crud.route('/add', methods=['GET', 'POST'])
+def add():
+    return "dummy", 200
+
 # [START list]
 @crud.route("/")
 def list2():

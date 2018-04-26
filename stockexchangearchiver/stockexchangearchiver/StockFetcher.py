@@ -1,3 +1,4 @@
+from pytz import timezone
 import requests
 from datetime import datetime, timedelta
 #import matplotlib.pyplot as plt
@@ -10,10 +11,10 @@ class StockFetcher:
     market = "TYO"
     period = "1d"
     column = "d,c"
-    market_duration_minute = 360 #休憩を含む
+    market_duration_minute = 360 #min 休憩を含む
     
-    time_zone_offset = 60 * 540 #sec     本番環境だとtime_zone_offsetを入れないとずれてる。
-    #time_zone_offset = 60 * 0 #sec    ローカルだとtime_zone_offsetを入れるとずれる。
+    #time_zone_offset = 60 * 540 #sec     本番環境だとtime_zone_offsetを入れないとずれてる。
+    time_zone_offset = 60 * 0 #sec    ローカルだとtime_zone_offsetを入れるとずれる。
 
     def __init__(self, code, label, name):
         self.code = code
@@ -31,6 +32,18 @@ class StockFetcher:
             'f': StockFetcher.column
         }
 
+        #googleのはデータ取得開始日を指定できず、
+        #最新データからさかのぼって何日分を取ってくるかという指定しかできない。
+        #timestampsを見て何日分取ってくるかを調べる。注）timestampsはUTCで来ている
+        today = datetime.now()
+        if  self.is_aware( timestamps[0] ):
+            today = timezone('UTC').localize( today )
+        diff = today - timestamps[0]
+
+        #昨日以前の要求なのでその分、データ取得期間を伸ばす.
+        if diff.days > 0 :
+            params[ 'p' ] = "{}d".format( diff.days + 1 )
+
         #http リクエスト
         r = requests.get(StockFetcher.url, params=params)
 
@@ -40,32 +53,31 @@ class StockFetcher:
 
         #ここからが株価
         prices = lines[8:]
-
-        #レスポンスの１日目のタイムスタンプをdatetimeに
+        
         base_time = 0
         dct = {}
         for i in range( len(prices) ):
             cols = prices[ i ].split(",")
             if 'a' in cols[0]:
-                #二日目以降は読まない仕様
-                if base_time != 0: break
                 base_time = int( cols[0].lstrip('a') )
                 ofst = 0
             else:
-                #二日目以降は読まない仕様
-                if not self.within_a_day( ofst ): break
                 ofst = int( cols[0] )
 
+            #Unix時間からタイムスタンプを取得。
             d = datetime.fromtimestamp( base_time + ofst * StockFetcher.interval + StockFetcher.time_zone_offset )
-            #logging.info('TIMESTAMP ' + str( d ))
+            #timestampsはUTCで来ているのでそれに合わせる。
+            if  self.is_aware( timestamps[0] ):
+                d = timezone('UTC').localize(d)
     
             if  self.just_begining_time(d) or self.just_end_time(d):
-                #開始時間ピッタリのやつはおかしい。
+                #開始時間ピッタリのやつはおかしいので除外。
                 #終了時間ピッタリのやつはないのもあるので除外。
                 pass
             else:
                 dct[ d ] = float(cols[1])
 
+        #timestampsで要求されているデータに限り登録。
         self.prices = []
         self.timestamps = []
         for t in timestamps:
@@ -73,7 +85,6 @@ class StockFetcher:
             if t in dct:
                 self.prices.append( dct[ t ] )
             else:
-                #logging.info('NO TIMESTAMP FOUND ' + str( t ))
                 self.prices.append( float(-1) )
                 
         return self.prices, self.timestamps
@@ -91,7 +102,9 @@ class StockFetcher:
     
     def just_end_time( self, d ):
         return (d.hour == 15 and d.minute == 0 )
-                
+
+    def is_aware( self, d ):
+        return d.tzinfo is not None and d.tzinfo.utcoffset(d) is not None
 
 def get_stock( no ):
     s = StockFetcher( no, "", "" )
