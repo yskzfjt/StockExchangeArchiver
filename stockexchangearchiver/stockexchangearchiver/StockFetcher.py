@@ -13,8 +13,8 @@ class StockFetcher:
     column = "d,c"
     market_duration_minute = 360 #min 休憩を含む
     
-    #time_zone_offset = 60 * 540 #sec     本番環境だとtime_zone_offsetを入れないとずれてる。
-    time_zone_offset = 60 * 0 #sec    ローカルだとtime_zone_offsetを入れるとずれる。
+    time_zone_offset = 60 * 540 #sec     本番環境だとtime_zone_offsetを入れないとずれてる。
+    #time_zone_offset = 60 * 0 #sec    ローカルだとtime_zone_offsetを入れるとずれる。
 
     def __init__(self, code, label, name):
         self.code = code
