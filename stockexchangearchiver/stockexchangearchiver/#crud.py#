@@ -72,6 +72,33 @@ def plot_graph(func='sin'):
     img_data = urllib.parse.quote(png_output.getvalue())
     return img_data
 
+@crud.route("/matplot/<date>")
+def mat_plot(date):
+    pd_data = get_pd( date )
+    
+    if pd_data is not None:
+        return render_template("base.html", date = date, pd_data=pd_data.to_html())
+    else:
+        return "ERROR:" + date + " does not exist in database.", 200
+    fig = Figure()
+    ax = fig.add_subplot(111)
+    xs = np.linspace(-np.pi, np.pi, 100)
+    if func == 'sin':
+        ys = np.sin(xs)
+    elif func == 'cos':
+        ys = np.cos(xs)
+    elif func == 'tan':
+        ys = np.tan(xs)
+    else:
+        ys = xs
+    ax.plot(xs, ys)
+    canvas = FigureCanvasAgg(fig)
+    png_output = BytesIO()
+    canvas.print_png(png_output)
+    img_data = urllib.parse.quote(png_output.getvalue())
+    return img_data
+
+
 #########################################################
 ## google financeからデータ取得。cronで呼ばれるURL
 #########################################################

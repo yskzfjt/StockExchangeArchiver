@@ -22,6 +22,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- ブートストラップ読み込み -->
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+	<script type="text/javascript">
+      function drawGraph(obj) {
+      var idx = obj.selectedIndex;
+      var value = obj.options[idx].value;
+      var plotdata = document.getElementById('plotimg');
+      $.get("/plot/" + value, function(data) {
+      plotdata.src = "data:image/png:base64," + data;
+      });
+      };
+      $(document).ready(function() {
+      //initialize components
+      var target = document.getElementById('selector');
+      drawGraph(target);
+      });
+	</script>
   </head>
   <body>
     <div class="navbar navbar-default">
